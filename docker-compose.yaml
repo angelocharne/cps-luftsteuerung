@@ -6,8 +6,25 @@ services:
     env_file:
       - path: .env
         required: false
-    privileged: true # Für GPIO + I2C Zugriff
+    privileged: true
     devices:
-      - /dev/i2c-1:/dev/i2c-1 # I2C für BME280
+      - /dev/i2c-1:/dev/i2c-1
     volumes:
-      - ./data:/app/data # Daten persistent
+      - ./data:/app/data
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+      - influxdb_config:/etc/influxdb2
+    env_file:
+      - path: .env
+        required: false
+
+volumes:
+  influxdb_data:
+  influxdb_config:
