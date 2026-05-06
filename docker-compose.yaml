@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  fan-controller:
+    build: ./app
+    container_name: fan_controller
+    restart: unless-stopped
+    privileged: true # Für GPIO + I2C Zugriff
+    devices:
+      - /dev/i2c-1:/dev/i2c-1 # I2C für BME280
+    volumes:
+      - ./data:/app/data # SQLite Daten persistent
+    env_file:
+      - .env # .env wird eingelesen
