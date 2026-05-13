@@ -4,3 +4,4 @@ adafruit-circuitpython-bme280
 influxdb-client
 fastapi
 uvicorn[standard]
+lgpio
