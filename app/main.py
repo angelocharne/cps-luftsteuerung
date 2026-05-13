@@ -29,6 +29,10 @@ write_api = client.write_api(write_options=SYNCHRONOUS)
 print(f"Sensor '{SENSOR_NAME}' ({SENSOR_ID}) @ {SENSOR_LOCATION} gestartet.")
 
 # Warten bis InfluxDB bereit ist
+
+#FastApi Test
+app = FastAPI()
+
 while True:
     try:
         health = client.health()
@@ -57,8 +61,6 @@ try:
         time.sleep(INTERVAL)
 finally:
     GPIO.cleanup()
-
-app = FastAPI()
 
 
 @app.get("/")
