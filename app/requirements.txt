@@ -1,4 +1,5 @@
 smbus2
 RPi.GPIO
+lgpio
 adafruit-circuitpython-bme280
 influxdb-client
