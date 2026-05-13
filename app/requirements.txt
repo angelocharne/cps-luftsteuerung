@@ -2,6 +2,3 @@ smbus2
 RPi.GPIO
 adafruit-circuitpython-bme280
 influxdb-client
-fastapi
-uvicorn[standard]
-lgpio
