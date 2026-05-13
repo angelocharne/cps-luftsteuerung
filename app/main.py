@@ -57,3 +57,10 @@ try:
         time.sleep(INTERVAL)
 finally:
     GPIO.cleanup()
+
+app = FastAPI()
+
+
+@app.get("/")
+def home():
+    return {"message": "FastAPI läuft"}
