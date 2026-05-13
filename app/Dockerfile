@@ -2,7 +2,7 @@ FROM python:3.11-slim-bookworm
 
 WORKDIR /app
 
-RUN  apt-get update && apt-get -y \
+RUN  apt-get update && apt-get install -y \
     i2c-tools \
     python3-smbus \
     gcc \
