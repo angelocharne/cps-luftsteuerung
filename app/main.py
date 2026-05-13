@@ -6,7 +6,6 @@ import busio
 import adafruit_bme280.basic as adafruit_bme280
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
-from fastapi import FastAPI
 
 SENSOR_ID       = os.getenv("SENSOR_ID", "1")
 SENSOR_NAME     = os.getenv("SENSOR_NAME", "BME280")
@@ -28,6 +27,17 @@ write_api = client.write_api(write_options=SYNCHRONOUS)
 
 print(f"Sensor '{SENSOR_NAME}' ({SENSOR_ID}) @ {SENSOR_LOCATION} gestartet.")
 
+# Warten bis InfluxDB bereit ist
+while True:
+    try:
+        health = client.health()
+        if health.status == "pass":
+            print("InfluxDB bereit.")
+            break
+    except Exception:
+        print("Warte auf InfluxDB...")
+    time.sleep(3)
+
 try:
     while True:
         temperature = sensor.temperature
@@ -46,10 +56,3 @@ try:
         time.sleep(INTERVAL)
 finally:
     GPIO.cleanup()
-
-app = FastAPI()
-
-
-@app.get("/")
-def home():
-    return {"message": "FastAPI läuft"}
