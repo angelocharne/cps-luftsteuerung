@@ -6,3 +6,4 @@
 4. git clone https://github.com/angelocharne/cps-luftsteuerung.git
 5. cd cps-luftsteuerung/
 6. sudo docker compose up -d
+7. TEST
