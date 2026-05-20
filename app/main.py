@@ -33,7 +33,7 @@ print(f"Sensor '{SENSOR_NAME}' ({SENSOR_ID}) @ {SENSOR_LOCATION} gestartet.")
 #FastApi Test
 app = FastAPI()
 
-while True:
+"""while True:
     try:
         health = client.health()
         if health.status == "pass":
@@ -60,7 +60,7 @@ try:
 
         time.sleep(INTERVAL)
 finally:
-    GPIO.cleanup()
+    GPIO.cleanup()"""
 
 
 @app.get("/")
