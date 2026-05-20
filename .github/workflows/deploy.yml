@@ -1,0 +1,16 @@
+name: Deploy to Pi
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Pull und neu starten
+        run: |
+          cd ~/cps-luftsteuerung
+          git pull
+          docker compose up --build -d
