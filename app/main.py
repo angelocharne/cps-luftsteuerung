@@ -14,15 +14,33 @@ INTERVAL        = int(os.getenv("SENSOR_INTERVAL", "10"))
 DATA_PATH       = os.getenv("DATA_PATH", "/app/data/sensor_data.json")
 TEMP_THRESHOLD  = float(os.getenv("TEMP_THRESHOLD", "27.0"))
 RELAY_PIN       = int(os.getenv("RELAY_PIN", "17"))
+PWM_PIN         = int(os.getenv("PWM_PIN", "18"))
+PWM_FREQ        = int(os.getenv("PWM_FREQ", "25"))
 
 # GPIO einrichten
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(RELAY_PIN, GPIO.OUT)
+GPIO.setup(PWM_PIN, GPIO.OUT)
 GPIO.output(RELAY_PIN, GPIO.HIGH)  # Relais standardmäßig aus
+
+# PWM einrichten
+pwm = GPIO.PWM(PWM_PIN, PWM_FREQ)
+pwm.start(0)  # 0% Drehzahl
 
 # Sensor einrichten
 i2c = busio.I2C(board.SCL, board.SDA)
 sensor = adafruit_bme280.Adafruit_BME280_I2C(i2c)
+
+def berechne_drehzahl(temp):
+    """Berechnet PWM Duty Cycle basierend auf Temperatur"""
+    if temp < TEMP_THRESHOLD:
+        return 0
+    elif temp >= 35:
+        return 100
+    else:
+        # Linear zwischen 27°C (30%) und 35°C (100%)
+        drehzahl = 30 + (temp - TEMP_THRESHOLD) * (70 / (35 - TEMP_THRESHOLD))
+        return round(min(drehzahl, 100), 1)
 
 print(f"Sensor '{SENSOR_NAME}' gestartet. Schwellenwert: {TEMP_THRESHOLD}°C")
 
@@ -38,16 +56,17 @@ try:
         # Temperatur messen
         jetzt = datetime.now()
         temperature = round(sensor.temperature, 2)
+        drehzahl = berechne_drehzahl(temperature)
 
-        # Relais steuern
+        # Relais und PWM steuern
         if temperature >= TEMP_THRESHOLD:
             GPIO.output(RELAY_PIN, GPIO.LOW)   # Relais AN
-            relay_status = "AN"
-            print(f"⚠️  Temperatur {temperature}°C >= {TEMP_THRESHOLD}°C → Lüfter AN")
+            pwm.ChangeDutyCycle(drehzahl)
+            print(f"⚠️  {temperature}°C → Lüfter AN @ {drehzahl}%")
         else:
             GPIO.output(RELAY_PIN, GPIO.HIGH)  # Relais AUS
-            relay_status = "AUS"
-            print(f"✅  Temperatur {temperature}°C < {TEMP_THRESHOLD}°C → Lüfter AUS")
+            pwm.ChangeDutyCycle(0)
+            print(f"✅  {temperature}°C → Lüfter AUS")
 
         # Eintrag erstellen
         eintrag = {
@@ -55,7 +74,8 @@ try:
             "name": SENSOR_NAME,
             "location": SENSOR_LOCATION,
             "temperature": temperature,
-            "relay": relay_status,
+            "relay": "AN" if temperature >= TEMP_THRESHOLD else "AUS",
+            "drehzahl_prozent": drehzahl,
             "timestamp": jetzt.strftime("%Y-%m-%dT%H:%M:%S")
         }
         historie.append(eintrag)
@@ -74,5 +94,6 @@ try:
         time.sleep(INTERVAL)
 
 finally:
-    GPIO.output(RELAY_PIN, GPIO.HIGH)  # Relais aus bei Programmende
+    pwm.stop()
+    GPIO.output(RELAY_PIN, GPIO.HIGH)
     GPIO.cleanup()
