@@ -22,7 +22,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ../data:/app/data
+      - ./data:/app/data
 
   influxdb:
     image: influxdb:2.7
