@@ -3,3 +3,5 @@ RPi.GPIO
 lgpio
 adafruit-circuitpython-bme280
 influxdb-client
+fastapi
+uvicorn[standard]
