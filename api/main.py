@@ -9,3 +9,7 @@ def home():
 @app.get("/health")
 def health():
     return {"ok": True}
+
+@app.get("/temperature")
+def health():
+    return {"temperature": "20 Grad"}
