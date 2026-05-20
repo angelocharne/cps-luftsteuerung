@@ -8,7 +8,7 @@ from fastapi import FastAPI, HTTPException
 
 app = FastAPI()
 
-DATA_FILE = Path("/app/data/sensor_data.json")
+DATA_FILE = Path("/data/sensor_data.json")
 
 @app.get("/sensor-data")
 def sensor_data():
