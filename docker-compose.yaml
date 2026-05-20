@@ -15,6 +15,13 @@ services:
       influxdb:
         condition: service_healthy
 
+  api:
+    build: ./api
+    container_name: fan_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+
   influxdb:
     image: influxdb:2.7
     container_name: influxdb
