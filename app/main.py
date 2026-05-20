@@ -1,58 +1,51 @@
 import os
 import time
-import RPi.GPIO as GPIO
+import json
 import board
 import busio
 import adafruit_bme280.basic as adafruit_bme280
-from influxdb_client import InfluxDBClient, Point
-from influxdb_client.client.write_api import SYNCHRONOUS
+from datetime import datetime, timedelta
 
 SENSOR_ID       = os.getenv("SENSOR_ID", "1")
 SENSOR_NAME     = os.getenv("SENSOR_NAME", "BME280")
 SENSOR_LOCATION = os.getenv("SENSOR_LOCATION", "Serverraum")
 INTERVAL        = int(os.getenv("SENSOR_INTERVAL", "10"))
-
-INFLUX_URL    = os.getenv("INFLUXDB_URL", "http://influxdb:8086")
-INFLUX_TOKEN  = os.getenv("DOCKER_INFLUXDB_INIT_ADMIN_TOKEN")
-INFLUX_ORG    = os.getenv("DOCKER_INFLUXDB_INIT_ORG")
-INFLUX_BUCKET = os.getenv("DOCKER_INFLUXDB_INIT_BUCKET")
-
-GPIO.setmode(GPIO.BCM)
+DATA_PATH       = os.getenv("DATA_PATH", "/app/data/sensor_data.json")
 
 i2c = busio.I2C(board.SCL, board.SDA)
 sensor = adafruit_bme280.Adafruit_BME280_I2C(i2c)
 
-client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
-write_api = client.write_api(write_options=SYNCHRONOUS)
+print(f"Sensor '{SENSOR_NAME}' gestartet.")
 
-print(f"Sensor '{SENSOR_NAME}' ({SENSOR_ID}) @ {SENSOR_LOCATION} gestartet.")
-
-# Warten bis InfluxDB bereit ist
 while True:
-    try:
-        health = client.health()
-        if health.status == "pass":
-            print("InfluxDB bereit.")
-            break
-    except Exception:
-        print("Warte auf InfluxDB...")
-    time.sleep(3)
+    # Vorhandene Daten laden
+    if os.path.exists(DATA_PATH):
+        with open(DATA_PATH, "r") as f:
+            historie = json.load(f)
+    else:
+        historie = []
 
-try:
-    while True:
-        temperature = sensor.temperature
+    # Neuen Messwert hinzufügen
+    jetzt = datetime.now()
+    eintrag = {
+        "sensor_id": SENSOR_ID,
+        "name": SENSOR_NAME,
+        "location": SENSOR_LOCATION,
+        "temperature": round(sensor.temperature, 2),
+        "timestamp": jetzt.strftime("%Y-%m-%dT%H:%M:%S")
+    }
+    historie.append(eintrag)
 
-        point = (
-            Point("temperature_reading")
-            .tag("sensor_id", SENSOR_ID)
-            .tag("name", SENSOR_NAME)
-            .tag("location", SENSOR_LOCATION)
-            .field("temperature", temperature)
-        )
+    # Einträge älter als 24h löschen
+    grenze = jetzt - timedelta(hours=24)
+    historie = [
+        e for e in historie
+        if datetime.strptime(e["timestamp"], "%Y-%m-%dT%H:%M:%S") > grenze
+    ]
 
-        write_api.write(bucket=INFLUX_BUCKET, record=point)
-        print(f"{SENSOR_NAME} @ {SENSOR_LOCATION}: {temperature:.2f}°C")
+    # Zurückschreiben
+    with open(DATA_PATH, "w") as f:
+        json.dump(historie, f, indent=2)
 
-        time.sleep(INTERVAL)
-finally:
-    GPIO.cleanup()
+    print(f"{SENSOR_NAME} @ {SENSOR_LOCATION}: {eintrag['temperature']}°C")
+    time.sleep(INTERVAL)
