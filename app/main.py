@@ -11,6 +11,7 @@ SENSOR_LOCATION = os.getenv("SENSOR_LOCATION", "Serverraum")
 INTERVAL        = int(os.getenv("SENSOR_INTERVAL", "10"))
 DATA_PATH       = os.getenv("DATA_PATH", "/app/data/sensor_data.json")
 TEMP_THRESHOLD  = float(os.getenv("TEMP_THRESHOLD", "27.0"))
+HARDWARE_ENABLED = os.getenv("HARDWARE_ENABLED", "true").lower() == "true"
 
 RELAY_PIN       = int(os.getenv("RELAY_PIN", "17"))
 PWM_PIN         = int(os.getenv("PWM_PIN", "18"))
@@ -45,7 +46,7 @@ def ensure_gpio_exported(pin):
 def setup_relay(pin):
     gpio_path = ensure_gpio_exported(pin)
     write_file(f"{gpio_path}/direction", "out")
-    write_file(f"{gpio_path}/value", "1")  # HIGH = Relais aus
+    write_file(f"{gpio_path}/value", "1")
 
 
 def set_relay(on):
@@ -58,7 +59,7 @@ def get_pwm_channel_for_pin(pin):
         return 0
     elif pin == 19:
         return 1
-    raise ValueError("Aktuell werden nur BCM 18 oder 19 für Hardware-PWM unterstützt.")
+    raise ValueError("Nur BCM 18 oder 19 für Hardware-PWM unterstützt.")
 
 
 def ensure_pwm_exported(channel):
@@ -72,30 +73,24 @@ def ensure_pwm_exported(channel):
 def setup_pwm(pin, frequency_hz):
     channel = get_pwm_channel_for_pin(pin)
     pwm_path = ensure_pwm_exported(channel)
-
     period_ns = int(1_000_000_000 / frequency_hz)
-
     try:
         write_file(f"{pwm_path}/enable", 0)
     except Exception:
         pass
-
     write_file(f"{pwm_path}/period", period_ns)
     write_file(f"{pwm_path}/duty_cycle", 0)
     write_file(f"{pwm_path}/enable", 1)
-
     return channel, pwm_path, period_ns
 
 
 def set_pwm_duty_cycle(percent, pwm_path, period_ns):
     percent = max(0.0, min(100.0, float(percent)))
     duty_ns = int(period_ns * (percent / 100.0))
-
     if duty_ns >= period_ns:
         duty_ns = period_ns - 1
     if duty_ns < 0:
         duty_ns = 0
-
     write_file(f"{pwm_path}/duty_cycle", duty_ns)
 
 
@@ -130,17 +125,14 @@ def berechne_drehzahl(temp):
 def read_temperature():
     if TEMP_SOURCE == "mock":
         return round(TEMP_MOCK_VALUE, 2)
-
     if TEMP_SOURCE == "file":
         return round(float(read_file(TEMP_FILE_PATH)), 2)
-
     if TEMP_SOURCE == "command":
         cmd = os.getenv("TEMP_COMMAND", "").strip()
         if not cmd:
             raise RuntimeError("TEMP_COMMAND ist leer.")
         result = subprocess.check_output(cmd, shell=True, text=True).strip()
         return round(float(result), 2)
-
     raise RuntimeError(f"Unbekannte TEMP_SOURCE: {TEMP_SOURCE}")
 
 
@@ -159,29 +151,32 @@ def save_history(history):
 
 print(f"Sensor '{SENSOR_NAME}' gestartet. Schwellenwert: {TEMP_THRESHOLD}°C")
 print(f"Temperaturquelle: {TEMP_SOURCE}")
+print(f"Hardware: {'aktiv' if HARDWARE_ENABLED else 'deaktiviert (Mock-Modus)'}")
 
 pwm_channel = None
 pwm_path = None
 period_ns = None
 
 try:
-    setup_relay(RELAY_PIN)
-    pwm_channel, pwm_path, period_ns = setup_pwm(PWM_PIN, PWM_FREQ)
+    if HARDWARE_ENABLED:
+        setup_relay(RELAY_PIN)
+        pwm_channel, pwm_path, period_ns = setup_pwm(PWM_PIN, PWM_FREQ)
 
     while True:
         historie = load_history()
-
         jetzt = datetime.now()
         temperature = read_temperature()
         drehzahl = berechne_drehzahl(temperature)
 
         if temperature >= TEMP_THRESHOLD:
-            set_relay(True)
-            set_pwm_duty_cycle(drehzahl, pwm_path, period_ns)
+            if HARDWARE_ENABLED:
+                set_relay(True)
+                set_pwm_duty_cycle(drehzahl, pwm_path, period_ns)
             print(f"⚠️  {temperature}°C → Lüfter AN @ {drehzahl}%")
         else:
-            set_relay(False)
-            set_pwm_duty_cycle(0, pwm_path, period_ns)
+            if HARDWARE_ENABLED:
+                set_relay(False)
+                set_pwm_duty_cycle(0, pwm_path, period_ns)
             print(f"✅  {temperature}°C → Lüfter AUS")
 
         eintrag = {
@@ -205,18 +200,16 @@ try:
         time.sleep(INTERVAL)
 
 finally:
-    try:
-        if pwm_path and period_ns is not None:
-            set_pwm_duty_cycle(0, pwm_path, period_ns)
-    except Exception:
-        pass
-
-    try:
-        set_relay(False)
-    except Exception:
-        pass
-
-    if pwm_channel is not None:
-        cleanup_pwm(pwm_channel)
-
-    cleanup_gpio(RELAY_PIN)
+    if HARDWARE_ENABLED:
+        try:
+            if pwm_path and period_ns is not None:
+                set_pwm_duty_cycle(0, pwm_path, period_ns)
+        except Exception:
+            pass
+        try:
+            set_relay(False)
+        except Exception:
+            pass
+        if pwm_channel is not None:
+            cleanup_pwm(pwm_channel)
+        cleanup_gpio(RELAY_PIN)
