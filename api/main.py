@@ -57,3 +57,8 @@ def home():
 @app.get("/health")
 def health():
     return {"ok": True}
+
+@app.get("/debug/files")
+def debug_files():
+    import os
+    return os.listdir("/app/data")
