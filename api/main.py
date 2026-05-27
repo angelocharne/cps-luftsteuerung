@@ -12,32 +12,41 @@ DATA_FILE = Path("/data/sensor_data.json")
 
 @app.get("/sensor-data")
 def sensor_data():
+    print("🔍 /sensor-data wurde aufgerufen")
+
+    print(f"📂 Prüfe Datei: {DATA_FILE}")
+
+    if not DATA_FILE.exists():
+        print("❌ Datei nicht gefunden!")
+        raise HTTPException(status_code=404, detail="JSON-Datei nicht gefunden")
+
     try:
         with open(DATA_FILE, "r", encoding="utf-8") as file:
             data = json.load(file)
 
+        print(f"📊 Datensätze geladen: {len(data)}")
+
         if not data:
-            raise HTTPException(
-                status_code=404,
-                detail="Keine Sensordaten vorhanden"
-            )
+            print("⚠️ Datei ist leer")
+            raise HTTPException(status_code=404, detail="Keine Daten vorhanden")
 
-        # letzten Eintrag zurückgeben
-        latest_sensor_data = data[-1]
+        latest = data[-1]
 
-        return latest_sensor_data
+        print(f"✅ Letzter Eintrag: {latest}")
 
-    except FileNotFoundError:
-        raise HTTPException(
-            status_code=404,
-            detail="JSON-Datei nicht gefunden"
-        )
+        return {
+            "status": "ok",
+            "count": len(data),
+            "latest": latest
+        }
 
-    except json.JSONDecodeError:
-        raise HTTPException(
-            status_code=500,
-            detail="Fehlerhafte JSON-Datei"
-        )
+    except json.JSONDecodeError as e:
+        print(f"💥 JSON Fehler: {e}")
+        raise HTTPException(status_code=500, detail="Ungültige JSON-Datei")
+
+    except Exception as e:
+        print(f"💥 Unerwarteter Fehler: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 
