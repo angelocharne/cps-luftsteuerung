@@ -18,7 +18,7 @@ def sensor_data():
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        return data[-1]
+        return data
 
     except Exception as e:
         print("💥 FEHLER:", str(e))
