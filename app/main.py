@@ -4,7 +4,7 @@ import json
 import struct
 import fcntl
 import subprocess
-from datetime import datetime, timedelta
+from datetime import datetime
 
 SENSOR_ID        = os.getenv("SENSOR_ID", "1")
 SENSOR_NAME      = os.getenv("SENSOR_NAME", "BME280")
@@ -171,23 +171,10 @@ def read_temperature():
     raise RuntimeError(f"Unbekannte TEMP_SOURCE: {TEMP_SOURCE}")
 
 
-def load_history():
-    if os.path.exists(DATA_PATH):
-        try:
-            with open(DATA_PATH, "r") as f:
-                content = f.read().strip()
-                if not content:
-                    return []
-                return json.loads(content)
-        except json.JSONDecodeError:
-            return []
-    return []
-
-
-def save_history(history):
+def save_entry(entry):
     os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
     with open(DATA_PATH, "w") as f:
-        json.dump(history, f, indent=2)
+        json.dump(entry, f, indent=2)
 
 
 print(f"Sensor '{SENSOR_NAME}' gestartet. Schwellenwert: {TEMP_THRESHOLD}°C")
@@ -204,7 +191,6 @@ try:
         pwm_channel, pwm_path, period_ns = setup_pwm(PWM_PIN, PWM_FREQ)
 
     while True:
-        historie = load_history()
         jetzt = datetime.now()
         temperature = read_temperature()
         drehzahl = berechne_drehzahl(temperature)
@@ -229,15 +215,8 @@ try:
             "drehzahl_prozent": drehzahl,
             "timestamp": jetzt.strftime("%Y-%m-%dT%H:%M:%S")
         }
-        historie.append(eintrag)
 
-        grenze = jetzt - timedelta(hours=24)
-        historie = [
-            e for e in historie
-            if datetime.strptime(e["timestamp"], "%Y-%m-%dT%H:%M:%S") > grenze
-        ]
-
-        save_history(historie)
+        save_entry(eintrag)
         time.sleep(INTERVAL)
 
 finally:
