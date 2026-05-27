@@ -1,4 +1,4 @@
-# 🌬️ CPS Luftsteuerung
+# CPS Luftsteuerung
 
 Automatische Lüftersteuerung für den Raspberry Pi – temperaturbasiert, containerisiert, mit REST-API.
 
@@ -24,13 +24,13 @@ Temperatur (BME280 / Mock / Datei)
 
 ## Stack
 
-| Komponente       | Technologie                      |
-|------------------|----------------------------------|
-| Sensorlogik      | Python (sysfs GPIO + I²C)        |
-| REST-API         | FastAPI + Uvicorn                |
-| Zeitreihendaten  | InfluxDB 2.7                     |
-| Deployment       | Docker Compose                   |
-| Hardware         | Raspberry Pi, BME280, PWM-Lüfter |
+| Komponente      | Technologie                      |
+| --------------- | -------------------------------- |
+| Sensorlogik     | Python (sysfs GPIO + I²C)        |
+| REST-API        | FastAPI + Uvicorn                |
+| Zeitreihendaten | InfluxDB 2.7                     |
+| Deployment      | Docker Compose                   |
+| Hardware        | Raspberry Pi, BME280, PWM-Lüfter |
 
 ---
 
@@ -64,39 +64,39 @@ cp .env.example .env
 sudo docker compose up -d
 ```
 
-| Dienst    | Adresse                     |
-|-----------|-----------------------------|
-| REST-API  | `http://<pi-ip>:8000`       |
-| InfluxDB  | `http://<pi-ip>:8086`       |
+| Dienst   | Adresse               |
+| -------- | --------------------- |
+| REST-API | `http://<pi-ip>:8000` |
+| InfluxDB | `http://<pi-ip>:8086` |
 
 ---
 
 ## Umgebungsvariablen
 
-| Variable           | Standard                     | Beschreibung                             |
-|--------------------|------------------------------|------------------------------------------|
-| `SENSOR_NAME`      | `BME280`                     | Anzeigename des Sensors                  |
-| `SENSOR_LOCATION`  | `Serverraum`                 | Standort                                 |
-| `SENSOR_INTERVAL`  | `10`                         | Messintervall in Sekunden                |
-| `TEMP_THRESHOLD`   | `27.0`                       | Schwellenwert in °C (Lüfter ein)         |
-| `TEMP_SOURCE`      | `mock`                       | `mock` · `bme280` · `file` · `command`   |
-| `TEMP_MOCK_VALUE`  | `28.5`                       | Fester Wert im Mock-Modus                |
-| `HARDWARE_ENABLED` | `true`                       | `false` = reiner Software-Modus          |
-| `RELAY_PIN`        | `17`                         | BCM-Pin des Relais                       |
-| `PWM_PIN`          | `18`                         | BCM-Pin für Hardware-PWM (18 oder 19)    |
-| `PWM_FREQ`         | `25000`                      | PWM-Frequenz in Hz                       |
-| `DATA_PATH`        | `/app/data/sensor_data.json` | Pfad zur Verlaufsdatei                   |
+| Variable           | Standard                     | Beschreibung                           |
+| ------------------ | ---------------------------- | -------------------------------------- |
+| `SENSOR_NAME`      | `BME280`                     | Anzeigename des Sensors                |
+| `SENSOR_LOCATION`  | `Serverraum`                 | Standort                               |
+| `SENSOR_INTERVAL`  | `10`                         | Messintervall in Sekunden              |
+| `TEMP_THRESHOLD`   | `27.0`                       | Schwellenwert in °C (Lüfter ein)       |
+| `TEMP_SOURCE`      | `mock`                       | `mock` · `bme280` · `file` · `command` |
+| `TEMP_MOCK_VALUE`  | `28.5`                       | Fester Wert im Mock-Modus              |
+| `HARDWARE_ENABLED` | `true`                       | `false` = reiner Software-Modus        |
+| `RELAY_PIN`        | `17`                         | BCM-Pin des Relais                     |
+| `PWM_PIN`          | `18`                         | BCM-Pin für Hardware-PWM (18 oder 19)  |
+| `PWM_FREQ`         | `25000`                      | PWM-Frequenz in Hz                     |
+| `DATA_PATH`        | `/app/data/sensor_data.json` | Pfad zur Verlaufsdatei                 |
 
 ---
 
 ## Lüfterkurve
 
-| Temperatur        | Drehzahl                            |
-|-------------------|-------------------------------------|
-| < Schwellenwert   | 0 % (aus)                           |
-| = Schwellenwert   | 30 %                                |
-| 35 °C             | 100 %                               |
-| > 35 °C           | 100 %                               |
+| Temperatur      | Drehzahl  |
+| --------------- | --------- |
+| < Schwellenwert | 0 % (aus) |
+| = Schwellenwert | 30 %      |
+| 35 °C           | 100 %     |
+| > 35 °C         | 100 %     |
 
 Zwischen Schwellenwert und 35 °C wird die Drehzahl **linear interpoliert**.
 
