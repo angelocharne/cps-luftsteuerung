@@ -138,8 +138,14 @@ def read_temperature():
 
 def load_history():
     if os.path.exists(DATA_PATH):
-        with open(DATA_PATH, "r") as f:
-            return json.load(f)
+        try:
+            with open(DATA_PATH, "r") as f:
+                content = f.read().strip()
+                if not content:
+                    return []
+                return json.loads(content)
+        except json.JSONDecodeError:
+            return []
     return []
 
 
