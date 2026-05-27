@@ -2,10 +2,9 @@ import os
 import time
 import json
 import struct
+import fcntl
 import subprocess
-import smbus2
 from datetime import datetime, timedelta
-
 
 SENSOR_ID        = os.getenv("SENSOR_ID", "1")
 SENSOR_NAME      = os.getenv("SENSOR_NAME", "BME280")
@@ -25,6 +24,7 @@ TEMP_FILE_PATH   = os.getenv("TEMP_FILE_PATH", "/app/data/temp.txt")
 
 GPIO_SYSFS_BASE  = "/sys/class/gpio"
 PWM_SYSFS_BASE   = "/sys/class/pwm/pwmchip0"
+I2C_SLAVE        = 0x0703
 
 
 def write_file(path, value):
@@ -125,25 +125,30 @@ def berechne_drehzahl(temp):
 
 
 def read_bme280_temperature():
-    bus = smbus2.SMBus(1)
-    address = 0x77
+    with open("/dev/i2c-1", "rb+", buffering=0) as bus:
+        fcntl.ioctl(bus, I2C_SLAVE, 0x77)
 
-    cal = bus.read_i2c_block_data(address, 0x88, 24)
-    dig_T1 = struct.unpack_from('<H', bytes(cal), 0)[0]
-    dig_T2 = struct.unpack_from('<h', bytes(cal), 2)[0]
-    dig_T3 = struct.unpack_from('<h', bytes(cal), 4)[0]
+        # Kalibrierungsdaten lesen
+        bus.write(bytes([0x88]))
+        cal = bus.read(24)
+        dig_T1 = struct.unpack_from('<H', cal, 0)[0]
+        dig_T2 = struct.unpack_from('<h', cal, 2)[0]
+        dig_T3 = struct.unpack_from('<h', cal, 4)[0]
 
-    bus.write_byte_data(address, 0xF4, 0x25)
-    time.sleep(0.1)
+        # Forced mode triggern
+        bus.write(bytes([0xF4, 0x25]))
+        time.sleep(0.1)
 
-    raw = bus.read_i2c_block_data(address, 0xFA, 3)
-    adc_T = (raw[0] << 12) | (raw[1] << 4) | (raw[2] >> 4)
+        # Rohdaten lesen
+        bus.write(bytes([0xFA]))
+        raw = bus.read(3)
+        adc_T = (raw[0] << 12) | (raw[1] << 4) | (raw[2] >> 4)
 
-    var1 = (adc_T / 16384.0 - dig_T1 / 1024.0) * dig_T2
-    var2 = ((adc_T / 131072.0 - dig_T1 / 8192.0) ** 2) * dig_T3
+        # Temperatur berechnen
+        var1 = (adc_T / 16384.0 - dig_T1 / 1024.0) * dig_T2
+        var2 = ((adc_T / 131072.0 - dig_T1 / 8192.0) ** 2) * dig_T3
 
-    bus.close()
-    return round((var1 + var2) / 5120.0, 2)
+        return round((var1 + var2) / 5120.0, 2)
 
 
 def read_temperature():
