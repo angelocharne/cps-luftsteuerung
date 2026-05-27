@@ -1,28 +1,30 @@
 import os
 import time
 import json
+import struct
+import fcntl
 import subprocess
 from datetime import datetime, timedelta
 
-
-SENSOR_ID       = os.getenv("SENSOR_ID", "1")
-SENSOR_NAME     = os.getenv("SENSOR_NAME", "BME280")
-SENSOR_LOCATION = os.getenv("SENSOR_LOCATION", "Serverraum")
-INTERVAL        = int(os.getenv("SENSOR_INTERVAL", "10"))
-DATA_PATH       = os.getenv("DATA_PATH", "/app/data/sensor_data.json")
-TEMP_THRESHOLD  = float(os.getenv("TEMP_THRESHOLD", "27.0"))
+SENSOR_ID        = os.getenv("SENSOR_ID", "1")
+SENSOR_NAME      = os.getenv("SENSOR_NAME", "BME280")
+SENSOR_LOCATION  = os.getenv("SENSOR_LOCATION", "Serverraum")
+INTERVAL         = int(os.getenv("SENSOR_INTERVAL", "10"))
+DATA_PATH        = os.getenv("DATA_PATH", "/app/data/sensor_data.json")
+TEMP_THRESHOLD   = float(os.getenv("TEMP_THRESHOLD", "27.0"))
 HARDWARE_ENABLED = os.getenv("HARDWARE_ENABLED", "true").lower() == "true"
 
-RELAY_PIN       = int(os.getenv("RELAY_PIN", "17"))
-PWM_PIN         = int(os.getenv("PWM_PIN", "18"))
-PWM_FREQ        = int(os.getenv("PWM_FREQ", "25000"))
+RELAY_PIN        = int(os.getenv("RELAY_PIN", "17"))
+PWM_PIN          = int(os.getenv("PWM_PIN", "18"))
+PWM_FREQ         = int(os.getenv("PWM_FREQ", "25000"))
 
-TEMP_SOURCE     = os.getenv("TEMP_SOURCE", "mock")
-TEMP_MOCK_VALUE = float(os.getenv("TEMP_MOCK_VALUE", "28.5"))
-TEMP_FILE_PATH  = os.getenv("TEMP_FILE_PATH", "/app/data/temp.txt")
+TEMP_SOURCE      = os.getenv("TEMP_SOURCE", "mock")
+TEMP_MOCK_VALUE  = float(os.getenv("TEMP_MOCK_VALUE", "28.5"))
+TEMP_FILE_PATH   = os.getenv("TEMP_FILE_PATH", "/app/data/temp.txt")
 
-GPIO_SYSFS_BASE = "/sys/class/gpio"
-PWM_SYSFS_BASE  = "/sys/class/pwm/pwmchip0"
+GPIO_SYSFS_BASE  = "/sys/class/gpio"
+PWM_SYSFS_BASE   = "/sys/class/pwm/pwmchip0"
+I2C_SLAVE        = 0x0703
 
 
 def write_file(path, value):
@@ -122,17 +124,50 @@ def berechne_drehzahl(temp):
         return round(min(drehzahl, 100), 1)
 
 
+def read_bme280_temperature():
+    with open("/dev/i2c-1", "rb+", buffering=0) as bus:
+        fcntl.ioctl(bus, I2C_SLAVE, 0x77)
+
+        # Kalibrierungsdaten lesen
+        bus.write(bytes([0x88]))
+        cal = bus.read(24)
+        dig_T1 = struct.unpack_from('<H', cal, 0)[0]
+        dig_T2 = struct.unpack_from('<h', cal, 2)[0]
+        dig_T3 = struct.unpack_from('<h', cal, 4)[0]
+
+        # Forced mode triggern
+        bus.write(bytes([0xF4, 0x25]))
+        time.sleep(0.1)
+
+        # Rohdaten lesen
+        bus.write(bytes([0xFA]))
+        raw = bus.read(3)
+        adc_T = (raw[0] << 12) | (raw[1] << 4) | (raw[2] >> 4)
+
+        # Temperatur berechnen
+        var1 = (adc_T / 16384.0 - dig_T1 / 1024.0) * dig_T2
+        var2 = ((adc_T / 131072.0 - dig_T1 / 8192.0) ** 2) * dig_T3
+
+        return round((var1 + var2) / 5120.0, 2)
+
+
 def read_temperature():
     if TEMP_SOURCE == "mock":
         return round(TEMP_MOCK_VALUE, 2)
+
+    if TEMP_SOURCE == "bme280":
+        return read_bme280_temperature()
+
     if TEMP_SOURCE == "file":
         return round(float(read_file(TEMP_FILE_PATH)), 2)
+
     if TEMP_SOURCE == "command":
         cmd = os.getenv("TEMP_COMMAND", "").strip()
         if not cmd:
             raise RuntimeError("TEMP_COMMAND ist leer.")
         result = subprocess.check_output(cmd, shell=True, text=True).strip()
-        return round(float(result), 2)
+        return round(float(result) / 1000, 2)
+
     raise RuntimeError(f"Unbekannte TEMP_SOURCE: {TEMP_SOURCE}")
 
 
