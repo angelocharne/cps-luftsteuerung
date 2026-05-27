@@ -2,27 +2,27 @@ import json
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 
-import json
-from pathlib import Path
-from fastapi import FastAPI, HTTPException
-
 app = FastAPI()
 
-DATA_FILE = Path("/sensor_data.json")
-
+DATA_FILE = Path("/app/data/sensor_data.json")
 
 @app.get("/sensor-data")
 def sensor_data():
-    import os
+    print("DEBUG: Route aufgerufen")
+    print("DEBUG: Pfad =", DATA_FILE)
 
-    path = "/app/data"
+    if not DATA_FILE.exists():
+        raise HTTPException(status_code=404, detail="JSON-Datei nicht gefunden")
 
-    files = os.listdir(path)
+    try:
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
 
-    return {
-        "files": files,
-        "exists": "sensor_data.json" in files
-    }
+        return data[-1]
+
+    except Exception as e:
+        print("💥 FEHLER:", str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
 def home():
