@@ -1,4 +1,2 @@
-smbus2
-RPi.GPIO
-adafruit-circuitpython-bme280
-lgpio
+fastapi
+uvicorn[standard]

@@ -11,9 +11,8 @@ services:
       - /dev/i2c-1:/dev/i2c-1
     volumes:
       - ./data:/app/data
-    depends_on:
-      influxdb:
-        condition: service_healthy
+      - /sys/class/gpio:/sys/class/gpio
+      - /sys/class/pwm:/sys/class/pwm
 
   api:
     build: ./api
@@ -21,25 +20,5 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
-
-  influxdb:
-    image: influxdb:2.7
-    container_name: influxdb
-    restart: unless-stopped
-    ports:
-      - "8086:8086"
     volumes:
-      - influxdb_data:/var/lib/influxdb2
-      - influxdb_config:/etc/influxdb2
-    env_file:
-      - path: .env
-        required: false
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8086/health"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
-volumes:
-  influxdb_data:
-  influxdb_config:
+      - ./data:/app/data
