@@ -179,7 +179,7 @@ def save_entry(entry):
 
 print(f"Sensor '{SENSOR_NAME}' gestartet. Schwellenwert: {TEMP_THRESHOLD}°C")
 print(f"Temperaturquelle: {TEMP_SOURCE}")
-print(f"Hardware: {'aktiv' if HARDWARE_ENABLED else 'deaktiviert (Mock-Modus)'}")
+print(f"Hardware: {'aktiv' if HARDWARE_ENABLED else 'deaktiviert (PI 4)'}")
 
 pwm_channel = None
 pwm_path = None
