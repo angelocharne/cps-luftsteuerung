@@ -1,10 +1,10 @@
 import csv
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 
 app = FastAPI()
 
-# Pfad auf die neue CSV-Datei ändern
 DATA_FILE = Path("/app/data/sensor_data.csv")
 
 tags_metadata = [
@@ -22,32 +22,46 @@ tags_metadata = [
     },
 ]
 
+# ==========================================
+# ROUTE 1: Gibt die Daten als JSON aus (für dein Logger-Skript)
+# ==========================================
 @app.get("/sensor-data")
-def sensor_data():
-    print("DEBUG: Route aufgerufen")
-    print("DEBUG: Pfad =", DATA_FILE)
+def sensor_data_json():
+    print("DEBUG: JSON-Route aufgerufen")
 
     if not DATA_FILE.exists():
         raise HTTPException(status_code=404, detail="CSV-Datei nicht gefunden")
 
     try:
-        # CSV-Datei einlesen
+        # CSV einlesen und in Dictionary/JSON umwandeln
         with open(DATA_FILE, mode="r", encoding="utf-8") as f:
-            # csv.DictReader nutzt automatisch die erste Zeile der CSV als Schlüssel (Keys)
             reader = csv.DictReader(f)
-
-            # Wandelt alle Zeilen in eine Liste von Dictionaries um
             data = list(reader)
 
-        # Gibst du eine Liste von dicts zurück, macht FastAPI automatisch JSON daraus
-        # Falls in der CSV nur eine einzelne Zeile (ein Sensorwert) steht und dein
-        # Logger exakt ein Objekt erwartet, nutze stattdessen: return data[0]
+        # Wenn dein Logger nur ein einzelnes Objekt erwartet (wie vorher),
+        # kannst du hier "return data[0]" schreiben (sofern die CSV nicht leer ist).
         return data
 
     except Exception as e:
-        print("FEHLER:", str(e))
+        print("💥 FEHLER:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
+# ==========================================
+# ROUTE 2: Gibt die reine CSV-Datei aus (Neuer Endpunkt)
+# ==========================================
+@app.get("/sensor-data/csv", response_class=FileResponse)
+def sensor_data_csv():
+    print("DEBUG: CSV-Route aufgerufen")
+
+    if not DATA_FILE.exists():
+        raise HTTPException(status_code=404, detail="CSV-Datei nicht gefunden")
+
+    # Gibt die Datei direkt als CSV-Download an den Aufrufer zurück
+    return FileResponse(path=DATA_FILE, media_type="text/csv", filename="sensor_data.csv")
+
+# ==========================================
+# WEITERE DEBUG- UND TEST-ROUTEN
+# ==========================================
 @app.get("/api-test", tags=["test"])
 def home():
     return {"status": "API läuft"}
