@@ -61,12 +61,14 @@ def sensor_data_csv():
     return FileResponse(path=DATA_FILE, media_type="text/csv", filename="sensor_data.csv")
 
 @app.get("/fanStart")
-def login():
-    return {"status": "start"}
+def fan_start():
+    CONTROL_FILE.write_text(json.dumps({"override": "on"}))
+    return {"status": "start", "override": "on"}
 
 @app.get("/fanStop")
-def login():
-    return {"status": "stop"}
+def fan_stop():
+    CONTROL_FILE.write_text(json.dumps({"override": "off"}))
+    return {"status": "stop", "override": "off"}
 
 @app.get("/login")
 def login():
