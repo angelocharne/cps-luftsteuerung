@@ -153,7 +153,11 @@ pwm_ch = pwm_path = period_ns = None
 try:
     if HARDWARE_ENABLED:
         setup_relay(RELAY_PIN)
-        pwm_ch, pwm_path, period_ns = setup_pwm(PWM_PIN, PWM_FREQ)
+        try:
+            pwm_ch, pwm_path, period_ns = setup_pwm(PWM_PIN, PWM_FREQ)
+        except Exception as e:
+            print(f"PWM nicht verfuegbar ({e}) — nur Relais aktiv")
+            pwm_ch = pwm_path = period_ns = None
 
     while True:
         temp     = read_temperature()
