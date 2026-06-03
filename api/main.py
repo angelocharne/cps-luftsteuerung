@@ -59,6 +59,19 @@ def sensor_data_csv():
     # Gibt die Datei direkt als CSV-Download an den Aufrufer zurück
     return FileResponse(path=DATA_FILE, media_type="text/csv", filename="sensor_data.csv")
 
+@app.get("/fanStart")
+def login():
+    return {"status": "start"}
+
+@app.get("/fanStop")
+def login():
+    return {"status": "stop"}
+
+@app.get("/login")
+def login():
+    return {"user": "admin"; "pw": "12345678"}
+
+
 # ==========================================
 # WEITERE DEBUG- UND TEST-ROUTEN
 # ==========================================
@@ -66,7 +79,7 @@ def sensor_data_csv():
 def home():
     return {"status": "API läuft"}
 
-@app.get("/debug/files")
+@app.get("/debug/files", tags=["test"])
 def debug_files():
     import os
     return os.listdir("/app/data")
