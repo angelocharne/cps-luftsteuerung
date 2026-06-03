@@ -35,18 +35,14 @@ def read_file(path):
 
 # GPIO / PWM
 
-# Initialisiert den GPIO-Pin des Relais als Ausgang
+# Initialisiert den GPIO-Pin des Relais (gpioset benoetigt keine Vorbereitung)
 def setup_relay(pin):
-    gpio = f"{GPIO_BASE}/gpio{pin}"
-    if not os.path.exists(gpio):
-        write_file(f"{GPIO_BASE}/export", pin)
-        time.sleep(0.1)
-    write_file(f"{gpio}/direction", "out")
-    write_file(f"{gpio}/value", "1")
+    pass
 
-# Schaltet das Relais ein oder aus
+# Schaltet das Relais ein oder aus via gpioset
 def set_relay(on):
-    write_file(f"{GPIO_BASE}/gpio{RELAY_PIN}/value", "0" if on else "1")
+    val = 0 if on else 1
+    subprocess.run(["gpioset", "gpiochip0", f"{RELAY_PIN}={val}"], check=False)
 
 # Initialisiert den Hardware-PWM-Kanal mit Frequenz und 0% Duty Cycle
 def setup_pwm(pin, freq):
