@@ -40,8 +40,8 @@ def sensor_data_json():
             data = list(reader)
 
         # Wenn dein Logger nur ein einzelnes Objekt erwartet (wie vorher),
-        # kannst du hier "return data[0]" schreiben (sofern die CSV nicht leer ist).
-        return data
+        # data[-1] greift immer zielsicher auf den allerletzten Eintrag der Liste zu!
+        return data[-1]
 
     except Exception as e:
         print("💥 FEHLER:", str(e))
@@ -59,6 +59,19 @@ def sensor_data_csv():
 
     # Gibt die Datei direkt als CSV-Download an den Aufrufer zurück
     return FileResponse(path=DATA_FILE, media_type="text/csv", filename="sensor_data.csv")
+
+@app.get("/fanStart")
+def login():
+    return {"status": "start"}
+
+@app.get("/fanStop")
+def login():
+    return {"status": "stop"}
+
+@app.get("/login")
+def login():
+    return {"user": "admin"; "pw": "12345678"}
+
 
 # ==========================================
 # ROUTE 3: Lüfter manuell steuern (on / off / auto)
@@ -83,7 +96,7 @@ def fan_override_status():
 def home():
     return {"status": "API läuft"}
 
-@app.get("/debug/files")
+@app.get("/debug/files", tags=["test"])
 def debug_files():
     import os
     return os.listdir("/app/data")
