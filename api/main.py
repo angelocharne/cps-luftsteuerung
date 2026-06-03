@@ -39,8 +39,8 @@ def sensor_data_json():
             data = list(reader)
 
         # Wenn dein Logger nur ein einzelnes Objekt erwartet (wie vorher),
-        # kannst du hier "return data[0]" schreiben (sofern die CSV nicht leer ist).
-        return data
+        # data[-1] greift immer zielsicher auf den allerletzten Eintrag der Liste zu!
+        return data[-1]
 
     except Exception as e:
         print("💥 FEHLER:", str(e))
