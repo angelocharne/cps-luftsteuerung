@@ -1,11 +1,11 @@
-import os, time, json, struct, fcntl, subprocess
+import os, time, csv, struct, fcntl, subprocess
 from datetime import datetime
 
 SENSOR_ID        = os.getenv("SENSOR_ID", "1")
 SENSOR_NAME      = os.getenv("SENSOR_NAME", "BME280")
 SENSOR_LOCATION  = os.getenv("SENSOR_LOCATION", "Serverraum")
 INTERVAL         = int(os.getenv("SENSOR_INTERVAL", "10"))
-DATA_PATH        = os.getenv("DATA_PATH", "/app/data/sensor_data.json")
+DATA_PATH        = os.getenv("DATA_PATH", "/app/data/sensor_data.csv")
 TEMP_THRESHOLD   = float(os.getenv("TEMP_THRESHOLD", "27.0"))
 HARDWARE_ENABLED = os.getenv("HARDWARE_ENABLED", "true").lower() == "true"
 RELAY_PIN        = int(os.getenv("RELAY_PIN", "17"))
@@ -122,11 +122,15 @@ def read_temperature():
 
 # Speichern
 
-# Speichert den aktuellen Messwert als JSON-Datei
+# Haengt den aktuellen Messwert als CSV-Zeile an (Excel-kompatibel)
 def save_entry(entry):
     os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
-    with open(DATA_PATH, "w") as f:
-        json.dump(entry, f, indent=2)
+    file_exists = os.path.exists(DATA_PATH)
+    with open(DATA_PATH, "a", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=entry.keys())
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(entry)
 
 
 # Hauptprogramm
