@@ -45,7 +45,7 @@ def sensor_data():
         return data
 
     except Exception as e:
-        print("💥 FEHLER:", str(e))
+        print("FEHLER:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api-test", tags=["test"])
