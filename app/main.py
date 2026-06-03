@@ -20,19 +20,22 @@ PWM_BASE  = "/sys/class/pwm/pwmchip0"
 I2C_SLAVE = 0x0703
 
 
-# ── Datei-Helfer ────────────────────────────────────────────────────────────
+# Datei-Helfer
 
+# Schreibt einen Wert als Text in eine Datei
 def write_file(path, val):
     with open(path, "w") as f:
         f.write(str(val))
 
+# Liest den Inhalt einer Datei als String
 def read_file(path):
     with open(path) as f:
         return f.read().strip()
 
 
-# ── GPIO / PWM ───────────────────────────────────────────────────────────────
+# GPIO / PWM
 
+# Initialisiert den GPIO-Pin des Relais als Ausgang
 def setup_relay(pin):
     gpio = f"{GPIO_BASE}/gpio{pin}"
     if not os.path.exists(gpio):
@@ -41,9 +44,11 @@ def setup_relay(pin):
     write_file(f"{gpio}/direction", "out")
     write_file(f"{gpio}/value", "1")
 
+# Schaltet das Relais ein oder aus
 def set_relay(on):
     write_file(f"{GPIO_BASE}/gpio{RELAY_PIN}/value", "0" if on else "1")
 
+# Initialisiert den Hardware-PWM-Kanal mit Frequenz und 0% Duty Cycle
 def setup_pwm(pin, freq):
     ch = {18: 0, 19: 1}.get(pin)
     if ch is None:
@@ -60,10 +65,12 @@ def setup_pwm(pin, freq):
     write_file(f"{pwm}/enable", 1)
     return ch, pwm, period
 
+# Setzt den PWM Duty Cycle in Prozent (0-100)
 def set_pwm_duty(percent, pwm, period):
     dc = int(period * max(0.0, min(100.0, float(percent))) / 100.0)
     write_file(f"{pwm}/duty_cycle", max(0, min(dc, period - 1)))
 
+# Fährt PWM und Relais sicher herunter beim Beenden
 def cleanup(relay_pin, pwm_ch, pwm_path, period):
     for fn in [
         lambda: set_pwm_duty(0, pwm_path, period),
@@ -75,13 +82,15 @@ def cleanup(relay_pin, pwm_ch, pwm_path, period):
         except Exception: pass
 
 
-# ── Sensor ───────────────────────────────────────────────────────────────────
+# Sensor
 
+# Berechnet die Lüfter-Drehzahl in Prozent basierend auf der Temperatur
 def berechne_drehzahl(temp):
     if temp < TEMP_THRESHOLD: return 0
     if temp >= 35:            return 100
     return round(30 + (temp - TEMP_THRESHOLD) * (70 / (35 - TEMP_THRESHOLD)), 1)
 
+# Liest die Temperatur direkt vom BME280-Sensor über I2C
 def read_bme280():
     with open("/dev/i2c-1", "rb+", buffering=0) as bus:
         fcntl.ioctl(bus, I2C_SLAVE, 0x77)
@@ -99,6 +108,7 @@ def read_bme280():
         v2   = ((adc / 131072.0 - T1 / 8192.0) ** 2) * T3
         return round((v1 + v2) / 5120.0, 2)
 
+# Gibt die Temperatur je nach konfigurierter Quelle zurück
 def read_temperature():
     if TEMP_SOURCE == "mock":    return round(TEMP_MOCK_VALUE, 2)
     if TEMP_SOURCE == "bme280":  return read_bme280()
@@ -110,15 +120,16 @@ def read_temperature():
     raise RuntimeError(f"Unbekannte TEMP_SOURCE: {TEMP_SOURCE}")
 
 
-# ── Speichern ────────────────────────────────────────────────────────────────
+# Speichern
 
+# Speichert den aktuellen Messwert als JSON-Datei
 def save_entry(entry):
     os.makedirs(os.path.dirname(DATA_PATH), exist_ok=True)
     with open(DATA_PATH, "w") as f:
         json.dump(entry, f, indent=2)
 
 
-# ── Hauptprogramm ───────────────────────────────────────────────────────────
+# Hauptprogramm
 
 print(f"Sensor '{SENSOR_NAME}' gestartet. Schwellenwert: {TEMP_THRESHOLD}°C")
 print(f"Temperaturquelle: {TEMP_SOURCE} | Hardware: {'aktiv' if HARDWARE_ENABLED else 'deaktiviert (PI 4)'}")
