@@ -1,10 +1,11 @@
-import json
+import csv
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 
 app = FastAPI()
 
-DATA_FILE = Path("/app/data/sensor_data.json")
+# Pfad auf die neue CSV-Datei ändern
+DATA_FILE = Path("/app/data/sensor_data.csv")
 
 tags_metadata = [
     {
@@ -27,12 +28,20 @@ def sensor_data():
     print("DEBUG: Pfad =", DATA_FILE)
 
     if not DATA_FILE.exists():
-        raise HTTPException(status_code=404, detail="JSON-Datei nicht gefunden")
+        raise HTTPException(status_code=404, detail="CSV-Datei nicht gefunden")
 
     try:
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        # CSV-Datei einlesen
+        with open(DATA_FILE, mode="r", encoding="utf-8") as f:
+            # csv.DictReader nutzt automatisch die erste Zeile der CSV als Schlüssel (Keys)
+            reader = csv.DictReader(f)
 
+            # Wandelt alle Zeilen in eine Liste von Dictionaries um
+            data = list(reader)
+
+        # Gibst du eine Liste von dicts zurück, macht FastAPI automatisch JSON daraus
+        # Falls in der CSV nur eine einzelne Zeile (ein Sensorwert) steht und dein
+        # Logger exakt ein Objekt erwartet, nutze stattdessen: return data[0]
         return data
 
     except Exception as e:
