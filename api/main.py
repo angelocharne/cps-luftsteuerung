@@ -70,7 +70,7 @@ def login():
 
 @app.get("/login")
 def login():
-    return {"user": "admin"; "pw": "12345678"}
+    return {"user": "admin", "pw": "12345678"}
 
 
 # ==========================================
