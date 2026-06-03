@@ -1,11 +1,12 @@
-import csv
+import csv, json
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
 app = FastAPI()
 
-DATA_FILE = Path("/app/data/sensor_data.csv")
+DATA_FILE    = Path("/app/data/sensor_data.csv")
+CONTROL_FILE = Path("/app/data/control.json")
 
 tags_metadata = [
     {
@@ -58,6 +59,22 @@ def sensor_data_csv():
 
     # Gibt die Datei direkt als CSV-Download an den Aufrufer zurück
     return FileResponse(path=DATA_FILE, media_type="text/csv", filename="sensor_data.csv")
+
+# ==========================================
+# ROUTE 3: Lüfter manuell steuern (on / off / auto)
+# ==========================================
+@app.post("/fan/override/{state}")
+def fan_override(state: str):
+    if state not in ("on", "off", "auto"):
+        raise HTTPException(status_code=400, detail="Nur: on, off, auto")
+    CONTROL_FILE.write_text(json.dumps({"override": state}))
+    return {"override": state}
+
+@app.get("/fan/override")
+def fan_override_status():
+    if not CONTROL_FILE.exists():
+        return {"override": "auto"}
+    return json.loads(CONTROL_FILE.read_text())
 
 # ==========================================
 # WEITERE DEBUG- UND TEST-ROUTEN

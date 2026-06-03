@@ -1,4 +1,4 @@
-import os, time, csv, struct, fcntl, subprocess
+import os, time, csv, json, struct, fcntl, subprocess
 from datetime import datetime
 
 SENSOR_ID        = os.getenv("SENSOR_ID", "1")
@@ -133,6 +133,16 @@ def save_entry(entry):
         writer.writerow(entry)
 
 
+# Liest den manuellen Override-Status aus der Control-Datei (on/off/auto)
+def read_override():
+    path = os.path.join(os.path.dirname(DATA_PATH), "control.json")
+    try:
+        with open(path) as f:
+            return json.load(f).get("override", "auto")
+    except Exception:
+        return "auto"
+
+
 # Hauptprogramm
 
 print(f"Sensor '{SENSOR_NAME}' gestartet. Schwellenwert: {TEMP_THRESHOLD}°C")
@@ -147,8 +157,9 @@ try:
 
     while True:
         temp     = read_temperature()
-        drehzahl = berechne_drehzahl(temp)
-        fan_on   = temp >= TEMP_THRESHOLD
+        override = read_override()
+        fan_on   = override == "on" or (override == "auto" and temp >= TEMP_THRESHOLD)
+        drehzahl = berechne_drehzahl(temp) if temp >= TEMP_THRESHOLD else (30 if fan_on else 0)
 
         if HARDWARE_ENABLED:
             set_relay(fan_on)
