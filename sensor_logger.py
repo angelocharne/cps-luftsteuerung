@@ -52,7 +52,7 @@ while True:
                 .tag("location", data["location"]) \
                 .field("temperature", float(data["temperature"])) \
                 .field("relay", data["relay"]) \
-                .field("drehzahl_prozent", float(data["drehzahl_prozent"]))
+                .field("drehzahl", float(data["drehzahl_prozent"]))
 
             write_api.write(bucket=INFLUX_BUCKET, org=INFLUX_ORG, record=point)
             print(f"[{data['timestamp']}] Gespeichert: {data['temperature']}°C, Drehzahl: {data['drehzahl_prozent']}%, Relais: {data['relay']}")
