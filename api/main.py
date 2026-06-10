@@ -1,4 +1,4 @@
-import csv, json
+import csv, json, subprocess
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -82,7 +82,17 @@ def login():
 def fan_override(state: str):
     if state not in ("on", "off", "auto"):
         raise HTTPException(status_code=400, detail="Nur: on, off, auto")
+
     CONTROL_FILE.write_text(json.dumps({"override": state}))
+
+    # Direkte GPIO-Steuerung via gpiod (gpioset gpiochip0 17=0/1)
+    # AN = 17=0 (invertierte Relais-Logik), AUS = 17=1
+    if state == "on":
+        subprocess.run(["gpioset", "gpiochip0", "17=0"], check=False)
+    elif state == "off":
+        subprocess.run(["gpioset", "gpiochip0", "17=1"], check=False)
+    # "auto" → kein direkter GPIO-Call, Sensor-App übernimmt
+
     return {"override": state}
 
 @app.get("/fan/override")
