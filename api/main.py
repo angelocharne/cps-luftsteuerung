@@ -62,13 +62,57 @@ def sensor_data_csv():
 
 @app.get("/fanStart")
 def fan_start():
-    CONTROL_FILE.write_text(json.dumps({"override": "on"}))
-    return {"status": "start", "override": "on"}
+    # Schaltet den Lüfter dauerhaft manuell ein
+    CONTROL_FILE.write_text(json.dumps({"mode": "on"}))
+    return {"status": "success", "mode": "manual_on", "message": "Lüfter manuell gestartet"}
 
 @app.get("/fanStop")
 def fan_stop():
-    CONTROL_FILE.write_text(json.dumps({"override": "off"}))
-    return {"status": "stop", "override": "off"}
+    # Schaltet den Lüfter dauerhaft manuell aus
+    CONTROL_FILE.write_text(json.dumps({"mode": "off"}))
+    return {"status": "success", "mode": "manual_off", "message": "Lüfter manuell gestoppt"}
+
+# --- NEU: Zurück in den Automatikmodus wechseln ---
+
+@app.get("/fanAuto")
+def fan_auto():
+    # Übergibt die Steuerung wieder der 30-Grad-Automatik
+    CONTROL_FILE.write_text(json.dumps({"mode": "auto"}))
+    return {"status": "success", "mode": "auto", "message": "Automatikmodus aktiviert"}
+
+# --- NEU: Route für den aktuellen Lüfter-Status ---
+
+@app.get("/fanStatus")
+def fan_status():
+    # 1. Eingestellten Modus ermitteln
+    configured_mode = "auto"
+    if CONTROL_FILE.exists():
+        try:
+            configured_mode = json.loads(CONTROL_FILE.read_text()).get("mode", "auto")
+        except:
+            pass
+
+    # 2. Tatsächlichen Hardware-Zustand aus der CSV lesen
+    actual_relay_state = "UNKNOWN"
+    current_temp = None
+
+    if DATA_FILE.exists():
+        try:
+            with open(DATA_FILE, "r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                data = list(reader)
+                if data:
+                    # Letzten Eintrag aus der CSV holen
+                    actual_relay_state = data[-1].get("relay", "UNKNOWN")
+                    current_temp = data[-1].get("temperature")
+        except Exception as e:
+            print("Fehler beim Lesen des Status aus CSV:", e)
+
+    return {
+        "mode": configured_mode,            # "auto", "on" oder "off"
+        "relay_state": actual_relay_state,  # "AN" oder "AUS" (was die Hardware gerade tut)
+        "current_temperature": current_temp # Letzte gemessene Temperatur
+    }
 
 @app.get("/login")
 def login():
